@@ -149,4 +149,29 @@ public static class Queries
            VALUES ($mediaId, $consumedAt)
            ON CONFLICT(MediaId, ConsumedAt) DO NOTHING;
            """;
+
+    public static string GetMediaSummaryEntries()
+        => """
+           SELECT Media.Id, Media.Title, Mediums.Name, MediaReviews.Stars
+           FROM Media
+           INNER JOIN Mediums
+               ON Media.MediumId = Mediums.Id
+           INNER JOIN MediaReviews
+               ON Media.Id = MediaReviews.MediaId
+           WHERE
+               (Media.Title LIKE $search
+               OR Media.Description LIKE $search
+               OR MediaReviews.Thoughts LIKE $search
+               OR EXISTS (
+                   SELECT 1
+                   FROM MediaGenres
+                   INNER JOIN Genres
+                       ON MediaGenres.GenreId = Genres.Id
+                   WHERE MediaGenres.MediaId = Media.Id
+                     AND Genres.Name LIKE $search
+               ))
+               AND Media.Id > $lastId
+           ORDER BY Media.Id
+           LIMIT $pageSize;
+           """;
 }

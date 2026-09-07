@@ -153,9 +153,32 @@ public class MediaRepository : IMediaRepository
         }
     }
     
-    public Task<Media> ReadMediaAsync(string id)
+    public async Task<List<MediaSummary>> GetMediaSummaryAsync(
+        string search,
+        int pageSize,
+        int lastId)
     {
-        throw new NotImplementedException();
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.GetMediaSummaryEntries();
+        command.Parameters.AddWithValue("search", $"%{search}%");
+        command.Parameters.AddWithValue("pageSize", pageSize);
+        command.Parameters.AddWithValue("lastId", lastId);
+        await using var reader = await command.ExecuteReaderAsync();
+        
+        var results = new List<MediaSummary>();
+        while (await reader.ReadAsync())
+        {
+            results.Add(new MediaSummary()
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Title = reader.GetString(reader.GetOrdinal("Title")),
+                MediumType = Enum.Parse<MediumType>(reader.GetString(reader.GetOrdinal("Name"))),
+                Stars = reader.GetDouble(reader.GetOrdinal("Stars"))
+            });
+        }
+        return results;
     }
     
     public Task DeleteMediaAsync(string id)
