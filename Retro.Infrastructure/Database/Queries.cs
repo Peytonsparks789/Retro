@@ -57,6 +57,8 @@ public static class Queries
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 MediaReviewId INTEGER NOT NULL,
                 Description TEXT NOT NULL,
+                
+                UNIQUE(MediaReviewId, Description),
 
                 FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id)
             );
@@ -65,17 +67,86 @@ public static class Queries
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 MediaReviewId INTEGER NOT NULL,
                 Description TEXT NOT NULL,
+                
+                UNIQUE(MediaReviewId, Description),
 
                 FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id)
             );
 
             CREATE TABLE IF NOT EXISTS MediaConsumptionHistory(
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 MediaId INTEGER NOT NULL,
                 ConsumedAt TEXT NOT NULL,
 
+                PRIMARY KEY (MediaId, ConsumedAt),
                 FOREIGN KEY (MediaId) REFERENCES Media(Id)
             );
 
             """;
+
+    public static string UpsertSubMediumEntry()
+        => """
+           INSERT INTO SubMediums (Name)
+           VALUES ($name)
+           ON CONFLICT(Name) DO UPDATE SET Name = excluded.Name
+           RETURNING Id;
+           """;
+
+    public static string UpsertGenreEntry()
+        => """
+           INSERT INTO Genres (Name)
+           VALUES ($name)
+           ON CONFLICT(Name) DO UPDATE SET Name = excluded.Name
+           RETURNING Id;
+           """;
+    
+    public static string UpsertMediaEntry()
+        => """
+           INSERT INTO Media (Id, Title, MediumId, SubMediumId, Description)
+           VALUES ($id, $title, $mediumId, $subMediumId, $description)
+           ON CONFLICT(Id) DO UPDATE SET Title =  $title, MediumId = $mediumId, SubMediumId = $subMediumId,  Description = $description
+           RETURNING Id;
+           """;
+
+    public static string InsertMediaEntry()
+        => """
+           INSERT INTO Media (Title, MediumId, SubMediumId, Description)
+           VALUES ($title, $mediumId, $subMediumId, $description)
+           RETURNING Id;
+           """;
+
+    public static string UpsertMediaGenresEntry()
+        => """
+           INSERT INTO MediaGenres (MediaId, GenreId)
+           VALUES ($mediaId, $genreId)
+           ON CONFLICT(MediaId, GenreId) DO NOTHING;
+           """;
+
+    public static string UpsertMediaReviewEntry()
+        => """
+           INSERT INTO MediaReviews (MediaId, Stars, Thoughts)
+           VALUES ($mediaId, $stars, $thoughts)
+           ON CONFLICT(MediaId) DO UPDATE SET Stars = $stars, Thoughts = $thoughts
+           RETURNING Id;
+           """;
+
+    public static string UpsertMediaReviewProsEntry()
+        => """
+           INSERT INTO MediaReviewPros (MediaReviewId, Description)
+           VALUES ($mediaReviewId, $description)
+           ON CONFLICT(MediaReviewId, Description) DO UPDATE SET mediaReviewId = excluded.MediaReviewId, Description = $description;
+           """;
+
+    public static string UpsertMediaReviewConsEntry()
+        => """
+           INSERT INTO MediaReviewCons (MediaReviewId, Description)
+           VALUES ($mediaReviewId, $description)
+           ON CONFLICT(MediaReviewId, Description) DO UPDATE SET mediaReviewId = excluded.MediaReviewId, Description = $description;
+           """;
+
+    public static string UpsertMediaConsumptionHistoryEntry()
+        => """
+           INSERT INTO MediaConsumptionHistory (MediaId, ConsumedAt)
+           VALUES ($mediaId, $consumedAt)
+           ON CONFLICT(MediaId, ConsumedAt) DO NOTHING;
+           """;
 }
