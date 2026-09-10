@@ -74,7 +74,7 @@ public class MediaRepository : IMediaRepository
                 mediaId = (long?)command.ExecuteScalar();
                 ArgumentNullException.ThrowIfNull(mediaId);
             }
-            
+
             foreach (var genre in media.Genres)
             {
                 // Upsert Genres table
@@ -82,12 +82,20 @@ public class MediaRepository : IMediaRepository
                 await using (var command = connection.CreateCommand())
                 {
                     command.Transaction = transaction;
-                    command.CommandText = Queries.UpsertGenreEntry();
-                    command.Parameters.AddWithValue("$name", genre);
+                    if (genre.Id is null)
+                    {
+                        command.CommandText = Queries.InsertGenreEntry();
+                    }
+                    else
+                    {
+                        command.CommandText = Queries.UpdateGenreEntry();
+                        command.Parameters.AddWithValue("id", genre.Id);
+                    }
+                    command.Parameters.AddWithValue("$name", genre.Name);
                     genreId = (long?)command.ExecuteScalar();
-                    ArgumentNullException.ThrowIfNull(genreId);
                 }
-
+                ArgumentNullException.ThrowIfNull(genreId);
+                
                 // Upsert MediaGenres table
                 await using (var command = connection.CreateCommand())
                 {

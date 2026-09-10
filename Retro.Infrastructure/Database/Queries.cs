@@ -91,11 +91,19 @@ public static class Queries
            RETURNING Id;
            """;
 
-    public static string UpsertGenreEntry()
+    public static string InsertGenreEntry()
         => """
            INSERT INTO Genres (Name)
            VALUES ($name)
            ON CONFLICT(Name) DO UPDATE SET Name = excluded.Name
+           RETURNING Id;
+           """;
+    
+    public static string UpdateGenreEntry()
+        => """
+           UPDATE Genres
+           SET Name = $name
+           WHERE Id = $id
            RETURNING Id;
            """;
     

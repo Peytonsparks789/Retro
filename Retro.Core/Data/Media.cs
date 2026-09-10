@@ -11,7 +11,7 @@ public class Media
 
     public string? SubMedium { get; set; }
 
-    public List<string> Genres { get; set; } = [];
+    public List<Genre> Genres { get; set; } = [];
     
     public string? Description { get; set; }
     
@@ -29,4 +29,10 @@ public class Review
     public List<string> Pros { get; set; } = [];
     
     public List<string> Cons { get; set; } = [];
+}
+
+public class Genre
+{
+    public required long? Id { get; set; }
+    public required string Name { get; set; }
 }
