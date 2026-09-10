@@ -18,6 +18,6 @@ public class SqliteConnectionFactory : ISqliteConnectionFactory
             Directory.CreateDirectory(directory);
         }
         
-        return new SqliteConnection($"Data Source={path}");
+        return new SqliteConnection($"Data Source={path};Foreign Keys=True");
     }
 }

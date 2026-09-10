@@ -365,8 +365,15 @@ public class MediaRepository : IMediaRepository
         return  consumptionHistory;
     }
     
-    public Task DeleteMediaAsync(string id)
+    public async Task DeleteMediaAsync(string id)
     {
-        throw new NotImplementedException();
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.DeleteMediaEntry();
+        command.Parameters.AddWithValue("id", id);
+
+        await command.ExecuteNonQueryAsync();
     }
 }

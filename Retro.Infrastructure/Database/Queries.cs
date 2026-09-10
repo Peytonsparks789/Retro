@@ -40,7 +40,7 @@ public static class Queries
                 GenreId INTEGER NOT NULL,
 
                 PRIMARY KEY (MediaId, GenreId),
-                FOREIGN KEY (MediaId) REFERENCES Media(Id),
+                FOREIGN KEY (MediaId) REFERENCES Media(Id) ON DELETE CASCADE,
                 FOREIGN KEY (GenreId) REFERENCES Genres(Id)
             );
 
@@ -50,7 +50,7 @@ public static class Queries
                 Stars FLOAT NOT NULL,
                 Thoughts TEXT NULL,
 
-                FOREIGN KEY (MediaId) REFERENCES Media(Id)
+                FOREIGN KEY (MediaId) REFERENCES Media(Id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS MediaReviewPros(
@@ -60,7 +60,7 @@ public static class Queries
                 
                 UNIQUE(MediaReviewId, Description),
 
-                FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id)
+                FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS MediaReviewCons(
@@ -70,7 +70,7 @@ public static class Queries
                 
                 UNIQUE(MediaReviewId, Description),
 
-                FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id)
+                FOREIGN KEY (MediaReviewId) REFERENCES MediaReviews(Id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS MediaConsumptionHistory(
@@ -78,7 +78,21 @@ public static class Queries
                 ConsumedAt TEXT NOT NULL,
 
                 PRIMARY KEY (MediaId, ConsumedAt),
-                FOREIGN KEY (MediaId) REFERENCES Media(Id)
+                FOREIGN KEY (MediaId) REFERENCES Media(Id) ON DELETE CASCADE
+            );
+            
+            DELETE FROM Genres
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM MediaGenres
+                WHERE MediaGenres.GenreId = Genres.Id
+            );
+            
+            DELETE FROM SubMediums
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM Media
+                WHERE Media.SubMediumId = SubMediums.Id
             );
 
             """;
@@ -239,5 +253,11 @@ public static class Queries
            FROM MediaConsumptionHistory
            WHERE MediaConsumptionHistory.MediaId = $id
            ORDER BY  ConsumedAt;
+           """;
+
+    public static string DeleteMediaEntry()
+        => """
+           DELETE FROM Media
+           WHERE Id = $id;
            """;
 }
