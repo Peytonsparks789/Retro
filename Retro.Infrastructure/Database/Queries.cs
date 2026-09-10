@@ -121,11 +121,14 @@ public static class Queries
            RETURNING Id;
            """;
     
-    public static string UpsertMediaEntry()
+    public static string UpdateMediaEntry()
         => """
-           INSERT INTO Media (Id, Title, MediumId, SubMediumId, Description)
-           VALUES ($id, $title, $mediumId, $subMediumId, $description)
-           ON CONFLICT(Id) DO UPDATE SET Title =  $title, MediumId = $mediumId, SubMediumId = $subMediumId,  Description = $description
+           UPDATE Media
+           SET Title = $title,
+               MediumId = $mediumId,
+               SubMediumId = $subMediumId,
+               Description = $description
+           WHERE Id = $id
            RETURNING Id;
            """;
 

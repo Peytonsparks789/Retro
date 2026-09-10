@@ -56,16 +56,14 @@ public class MediaRepository : IMediaRepository
             await using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                switch (media.Id)
+                if (media.Id is null)
                 {
-                    case null:
-                        command.CommandText = Queries.InsertMediaEntry();
-                        break;
-
-                    case not null:
-                        command.CommandText = Queries.UpsertMediaEntry();
-                        command.Parameters.AddWithValue("id", media.Id);
-                        break;
+                    command.CommandText = Queries.InsertMediaEntry();
+                }
+                else
+                {
+                    command.CommandText = Queries.UpdateMediaEntry();
+                    command.Parameters.AddWithValue("id", media.Id);
                 }
                 command.Parameters.AddWithValue("title", media.Title);
                 command.Parameters.AddWithValue("mediumId", media.Medium);
