@@ -182,4 +182,62 @@ public static class Queries
            ORDER BY Media.Id
            LIMIT $pageSize;
            """;
+
+    public static string GetMediaEntry()
+        => """
+           SELECT
+               Media.Id,
+               Media.Title,
+               Mediums.Name AS Medium,
+               SubMediums.Name AS SubMedium,
+               Media.Description
+           FROM Media
+           INNER JOIN Mediums
+               ON  Media.MediumId = Mediums.Id
+           LEFT JOIN SubMediums
+               ON Media.SubMediumId = SubMediums.Id
+           WHERE Media.Id = $id;
+           """;
+
+    public static string GetMediaGenres()
+        => """
+           SELECT Genres.Id, Genres.Name
+           FROM MediaGenres
+           INNER JOIN Genres
+               ON MediaGenres.GenreId = Genres.Id
+           WHERE MediaGenres.MediaId = $id;
+           """;
+
+    public static string GetMediaReview()
+        => """
+           SELECT Stars, Thoughts
+           FROM MediaReviews
+           WHERE MediaReviews.MediaId = $id;
+           """;
+
+    public static string GetMediaReviewPros()
+        => """
+           SELECT Description
+           FROM MediaReviews
+           INNER JOIN MediaReviewPros
+               ON MediaReviews.Id = MediaReviewPros.MediaReviewId
+           WHERE MediaReviews.MediaId = $id;
+           """;
+    
+    public static string GetMediaReviewCons()
+        => """
+           SELECT Description
+           FROM MediaReviews
+           INNER JOIN MediaReviewCons
+               ON MediaReviews.Id = MediaReviewCons.MediaReviewId
+           WHERE MediaReviews.MediaId = $id;
+           """;
+
+    public static string GetMediaConsumptionHistory()
+        => """
+           SELECT ConsumedAt
+           FROM MediaConsumptionHistory
+           WHERE MediaConsumptionHistory.MediaId = $id
+           ORDER BY  ConsumedAt;
+           """;
 }

@@ -188,6 +188,182 @@ public class MediaRepository : IMediaRepository
         }
         return results;
     }
+
+    public async Task<Media?> GetMediaAsync(string id)
+    {
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        long mediaId;
+        string title;
+        MediumType medium;
+        string? subMedium;
+        string? description;
+
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = Queries.GetMediaEntry();
+            command.Parameters.AddWithValue("id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+            {
+                return null;
+            }
+
+            mediaId = reader.GetInt64(reader.GetOrdinal("Id"));
+            title = reader.GetString(reader.GetOrdinal("Title"));
+            medium = Enum.Parse<MediumType>(
+                reader.GetString(reader.GetOrdinal("Medium")));
+
+            var subMediumOrdinal = reader.GetOrdinal("SubMedium");
+            subMedium = reader.IsDBNull(subMediumOrdinal)
+                ? null
+                : reader.GetString(subMediumOrdinal);
+
+            var descriptionOrdinal = reader.GetOrdinal("Description");
+            description = reader.IsDBNull(descriptionOrdinal)
+                ? null
+                : reader.GetString(descriptionOrdinal);
+        }
+
+        var review = await GetMediaReviewAsync(connection, id);
+
+        if (review is null)
+        {
+            return null;
+        }
+
+        return new Media
+        {
+            Id = mediaId,
+            Title = title,
+            Medium = medium,
+            SubMedium = subMedium,
+            Genres = await GetMediaGenresAsync(connection, id),
+            Description = description,
+            Review = review,
+            ConsumptionHistory = await GetMediaConsumptionHistoryAsync(connection, id)
+        };
+    }
+    
+    public async Task<List<Genre>> GetMediaGenresAsync(string id)
+    {
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+        return await GetMediaGenresAsync(connection, id);
+    }
+    private static async Task<List<Genre>> GetMediaGenresAsync(SqliteConnection connection, string id)
+    {
+        List<Genre> genres = [];
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.GetMediaGenres();
+        command.Parameters.AddWithValue("id", id);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            genres.Add(new Genre()
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                Name = reader.GetString(reader.GetOrdinal("Name")),
+            });
+        }
+
+        return genres;
+    }
+
+    public async Task<Review?> GetMediaReviewAsync(string id)
+    {
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+        return await GetMediaReviewAsync(connection, id);
+    }
+    private async Task<Review?> GetMediaReviewAsync(
+        SqliteConnection connection,
+        string id)
+    {
+        double stars;
+        string? thoughts;
+
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = Queries.GetMediaReview();
+            command.Parameters.AddWithValue("id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+            {
+                return null;
+            }
+
+            stars = reader.GetDouble(reader.GetOrdinal("Stars"));
+
+            var thoughtsOrdinal = reader.GetOrdinal("Thoughts");
+            thoughts = reader.IsDBNull(thoughtsOrdinal)
+                ? null
+                : reader.GetString(thoughtsOrdinal);
+        }
+
+        return new Review
+        {
+            Stars = stars,
+            Thoughts = thoughts,
+            Pros = await GetMediaReviewProsAsync(connection, id),
+            Cons = await GetMediaReviewConsAsync(connection, id)
+        };
+    }
+
+    private async Task<List<string>> GetMediaReviewConsAsync(SqliteConnection connection, string id)
+    {
+        List<string> cons = [];
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.GetMediaReviewCons();
+        command.Parameters.AddWithValue("id", id);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            cons.Add(reader.GetString(reader.GetOrdinal("Description")));
+        }
+
+        return cons;
+    }
+
+    private async Task<List<string>> GetMediaReviewProsAsync(SqliteConnection connection, string id)
+    {
+        List<string> pros = [];
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.GetMediaReviewPros();
+        command.Parameters.AddWithValue("id", id);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            pros.Add(reader.GetString(reader.GetOrdinal("Description")));
+        }
+
+        return pros;
+    }
+
+    public async Task<List<DateTime>> GetMediaConsumptionHistoryAsync(string id)
+    {
+        await using var connection = _sqliteConnectionFactory.CreateConnection();
+        await connection.OpenAsync();
+        return await GetMediaConsumptionHistoryAsync(connection, id);
+    }
+    private async Task<List<DateTime>> GetMediaConsumptionHistoryAsync(SqliteConnection connection, string id)
+    {
+        List<DateTime> consumptionHistory = [];
+        await using var command = connection.CreateCommand();
+        command.CommandText = Queries.GetMediaConsumptionHistory();
+        command.Parameters.AddWithValue("id", id);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            consumptionHistory.Add(reader.GetDateTime(reader.GetOrdinal("ConsumedAt")));
+        }
+        return  consumptionHistory;
+    }
     
     public Task DeleteMediaAsync(string id)
     {
