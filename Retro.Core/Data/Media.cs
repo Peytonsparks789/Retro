@@ -17,7 +17,7 @@ public class Media
     
     public required Review Review { get; set; }
 
-    public required List<DateTime> ConsumptionHistory { get; set; } = [];
+    public required List<Consumption> ConsumptionHistory { get; set; } = [];
 }
 
 public class Review
@@ -26,13 +26,31 @@ public class Review
     
     public string? Thoughts { get; set; }
 
-    public List<string> Pros { get; set; } = [];
+    public List<ReviewPro> Pros { get; set; } = [];
     
-    public List<string> Cons { get; set; } = [];
+    public List<ReviewCon> Cons { get; set; } = [];
 }
 
 public class Genre
 {
-    public required long? Id { get; set; }
+    public long? Id { get; set; }
     public required string Name { get; set; }
+}
+
+public class ReviewPro
+{
+    public long? Id { get; set; }
+    public required string Description { get; set; }
+}
+
+public class ReviewCon
+{
+    public long? Id { get; set; }
+    public required string Description { get; set; }
+}
+
+public class Consumption
+{
+    public long? Id { get; set; }
+    public required DateTime ConsumedAt { get; set; }
 }

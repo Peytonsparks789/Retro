@@ -66,13 +66,15 @@ public class MediaRepository : IMediaRepository
                     command.Parameters.AddWithValue("id", media.Id);
                 }
                 command.Parameters.AddWithValue("title", media.Title);
-                command.Parameters.AddWithValue("mediumId", media.Medium);
+                command.Parameters.AddWithValue("mediumId", (int)media.Medium);
                 command.Parameters.AddWithValue("subMediumId", (object?)subMediumId ?? DBNull.Value);
                 command.Parameters.AddWithValue("description", (object?)media.Description ?? DBNull.Value);
                 mediaId = (long?)command.ExecuteScalar();
                 ArgumentNullException.ThrowIfNull(mediaId);
+                media.Id = mediaId;
             }
 
+            var dbMediaGenresPreUpsert = await GetMediaGenresAsync(connection, media.Id.ToString());
             foreach (var genre in media.Genres)
             {
                 // Upsert Genres table
@@ -93,6 +95,7 @@ public class MediaRepository : IMediaRepository
                     genreId = (long?)command.ExecuteScalar();
                 }
                 ArgumentNullException.ThrowIfNull(genreId);
+                genre.Id = genreId;
                 
                 // Upsert MediaGenres table
                 await using (var command = connection.CreateCommand())
@@ -103,6 +106,18 @@ public class MediaRepository : IMediaRepository
                     command.Parameters.AddWithValue("genreId", genreId);
                     command.ExecuteNonQuery();
                 }
+            }
+            var staleMediaGenres = dbMediaGenresPreUpsert
+                .Where(dbItem => media.Genres.All(x => x.Id != dbItem.Id))
+                .ToList();
+            foreach (var mediaGenre in staleMediaGenres)
+            {
+                await using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = Queries.DeleteMediaGenresEntry();
+                command.Parameters.AddWithValue("mediaId", mediaId);
+                command.Parameters.AddWithValue("genreId", mediaGenre.Id);
+                command.ExecuteNonQuery();
             }
             
             // Upsert MediaReviews table
@@ -119,37 +134,99 @@ public class MediaRepository : IMediaRepository
             }
             
             // Upsert MediaReviewPros table
+            var dbMediaProsPreUpsert = await GetMediaReviewProsAsync(connection, media.Id.ToString());
             foreach (var pro in media.Review.Pros)
+            {
+                long? proId;
+                await using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                if (pro.Id is null)
+                {
+                    command.CommandText = Queries.InsertMediaReviewProsEntry();
+                    command.Parameters.AddWithValue("mediaReviewId", reviewId);
+                }
+                else
+                {
+                    command.CommandText = Queries.UpdateMediaReviewProsEntry();
+                    command.Parameters.AddWithValue("id", pro.Id);
+                }
+                command.Parameters.AddWithValue("description", pro.Description);
+                proId = (long?)command.ExecuteScalar();
+                ArgumentNullException.ThrowIfNull(proId);
+                pro.Id = proId;
+            }
+            var staleMediaReviewPros = dbMediaProsPreUpsert
+                .Where(dbItem => media.Review.Pros.All(x => x.Id != dbItem.Id))
+                .ToList();
+            foreach (var pro in staleMediaReviewPros)
             {
                 await using var command = connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = Queries.UpsertMediaReviewProsEntry();
-                command.Parameters.AddWithValue("mediaReviewId", reviewId);
-                command.Parameters.AddWithValue("description", pro);
+                command.CommandText = Queries.DeleteMediaReviewProsEntry();
+                command.Parameters.AddWithValue("id", pro.Id);
                 command.ExecuteNonQuery();
             }
             
             // Upsert MediaReviewCons table
+            var dbMediaConsPreUpsert = await GetMediaReviewConsAsync(connection, media.Id.ToString());
             foreach (var con in media.Review.Cons)
+            {
+                long? conId;
+                await using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                if (con.Id is null)
+                {
+                    command.CommandText = Queries.InsertMediaReviewConsEntry();
+                    command.Parameters.AddWithValue("mediaReviewId", reviewId);
+                }
+                else
+                {
+                    command.CommandText = Queries.UpdateMediaReviewConsEntry();
+                    command.Parameters.AddWithValue("id", con.Id);
+                }
+                command.Parameters.AddWithValue("description", con.Description);
+                conId = (long?)command.ExecuteScalar();
+                ArgumentNullException.ThrowIfNull(conId);
+                con.Id = conId;
+            }
+            var staleMediaReviewCons = dbMediaConsPreUpsert
+                .Where(dbItem => media.Review.Cons.All(x => x.Id != dbItem.Id))
+                .ToList();
+            foreach (var con in staleMediaReviewCons)
             {
                 await using var command = connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = Queries.UpsertMediaReviewConsEntry();
-                command.Parameters.AddWithValue("mediaReviewId", reviewId);
-                command.Parameters.AddWithValue("description", con);
+                command.CommandText = Queries.DeleteMediaReviewConsEntry();
+                command.Parameters.AddWithValue("id", con.Id);
                 command.ExecuteNonQuery();
             }
             
             // Upsert MediaConsumptionHistory table
-            foreach (var consumedAt in media.ConsumptionHistory)
+            var dbConsumptionHistoryPreUpsert = await GetMediaConsumptionHistoryAsync(connection, media.Id.ToString());
+            foreach (var consumption in media.ConsumptionHistory)
             {
+                long? consumptionId;
                 await using var command = connection.CreateCommand();
                 command.Transaction = transaction;
                 command.CommandText = Queries.UpsertMediaConsumptionHistoryEntry();
                 command.Parameters.AddWithValue("mediaId", mediaId);
-                command.Parameters.AddWithValue("consumedAt", consumedAt);
+                command.Parameters.AddWithValue("consumedAt", consumption.ConsumedAt);
+                consumptionId = (long?)command.ExecuteScalar();
+                ArgumentNullException.ThrowIfNull(consumptionId);
+                consumption.Id = consumptionId;
+            }
+            var staleConsumptionHistory = dbConsumptionHistoryPreUpsert
+                .Where(dbItem => media.ConsumptionHistory.All(x => x.Id != dbItem.Id))
+                .ToList();
+            foreach (var consumedAt in staleConsumptionHistory)
+            {
+                await using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = Queries.DeleteConsumptionHistoryEntry();
+                command.Parameters.AddWithValue("id", consumedAt.Id);
                 command.ExecuteNonQuery();
             }
+            
             transaction.Commit();
         }
         catch (Exception)
@@ -313,52 +390,67 @@ public class MediaRepository : IMediaRepository
         };
     }
 
-    private async Task<List<string>> GetMediaReviewConsAsync(SqliteConnection connection, string id)
+    private async Task<List<ReviewCon>> GetMediaReviewConsAsync(SqliteConnection connection, string id)
     {
-        List<string> cons = [];
+        List<ReviewCon> cons = [];
         await using var command = connection.CreateCommand();
         command.CommandText = Queries.GetMediaReviewCons();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            cons.Add(reader.GetString(reader.GetOrdinal("Description")));
+            cons.Add(
+                new ReviewCon
+                {
+                    Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                    Description = reader.GetString(reader.GetOrdinal("Description"))
+                });
         }
 
         return cons;
     }
 
-    private async Task<List<string>> GetMediaReviewProsAsync(SqliteConnection connection, string id)
+    private async Task<List<ReviewPro>> GetMediaReviewProsAsync(SqliteConnection connection, string id)
     {
-        List<string> pros = [];
+        List<ReviewPro> pros = [];
         await using var command = connection.CreateCommand();
         command.CommandText = Queries.GetMediaReviewPros();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            pros.Add(reader.GetString(reader.GetOrdinal("Description")));
+            pros.Add(                
+                new ReviewPro
+                {
+                    Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                    Description = reader.GetString(reader.GetOrdinal("Description"))
+                });
         }
 
         return pros;
     }
 
-    public async Task<List<DateTime>> GetMediaConsumptionHistoryAsync(string id)
+    public async Task<List<Consumption>> GetMediaConsumptionHistoryAsync(string id)
     {
         await using var connection = _sqliteConnectionFactory.CreateConnection();
         await connection.OpenAsync();
         return await GetMediaConsumptionHistoryAsync(connection, id);
     }
-    private async Task<List<DateTime>> GetMediaConsumptionHistoryAsync(SqliteConnection connection, string id)
+    private async Task<List<Consumption>> GetMediaConsumptionHistoryAsync(SqliteConnection connection, string id)
     {
-        List<DateTime> consumptionHistory = [];
+        List<Consumption> consumptionHistory = [];
         await using var command = connection.CreateCommand();
         command.CommandText = Queries.GetMediaConsumptionHistory();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            consumptionHistory.Add(reader.GetDateTime(reader.GetOrdinal("ConsumedAt")));
+            consumptionHistory.Add(
+                new Consumption()
+                {
+                    Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                    ConsumedAt = reader.GetDateTime(reader.GetOrdinal("ConsumedAt"))
+                });
         }
         return  consumptionHistory;
     }

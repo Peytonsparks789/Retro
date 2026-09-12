@@ -25,7 +25,7 @@ public static class Queries
                 Title TEXT NOT NULL,
                 MediumId INTEGER NOT NULL,
                 SubMediumId INTEGER,
-                Description TEXT NOT NULL,
+                Description TEXT NULL,
 
                 FOREIGN KEY (MediumId) REFERENCES Mediums(Id),
                 FOREIGN KEY (SubMediumId) REFERENCES SubMediums(Id)
@@ -74,10 +74,11 @@ public static class Queries
             );
 
             CREATE TABLE IF NOT EXISTS MediaConsumptionHistory(
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 MediaId INTEGER NOT NULL,
                 ConsumedAt TEXT NOT NULL,
 
-                PRIMARY KEY (MediaId, ConsumedAt),
+                UNIQUE(MediaId, ConsumedAt),
                 FOREIGN KEY (MediaId) REFERENCES Media(Id) ON DELETE CASCADE
             );
             
@@ -154,25 +155,43 @@ public static class Queries
            RETURNING Id;
            """;
 
-    public static string UpsertMediaReviewProsEntry()
+    public static string InsertMediaReviewProsEntry()
         => """
            INSERT INTO MediaReviewPros (MediaReviewId, Description)
            VALUES ($mediaReviewId, $description)
-           ON CONFLICT(MediaReviewId, Description) DO UPDATE SET mediaReviewId = excluded.MediaReviewId, Description = $description;
+           RETURNING Id;
+           """;
+    
+    public static string UpdateMediaReviewProsEntry()
+        => """
+           UPDATE MediaReviewPros
+           SET Description = $description
+           WHERE Id = $id
+           RETURNING Id;
            """;
 
-    public static string UpsertMediaReviewConsEntry()
+    public static string InsertMediaReviewConsEntry()
         => """
            INSERT INTO MediaReviewCons (MediaReviewId, Description)
            VALUES ($mediaReviewId, $description)
-           ON CONFLICT(MediaReviewId, Description) DO UPDATE SET mediaReviewId = excluded.MediaReviewId, Description = $description;
+           RETURNING Id;
+           """;
+    
+    public static string UpdateMediaReviewConsEntry()
+        => """
+           UPDATE MediaReviewCons
+           SET Description = $description
+           WHERE Id = $id
+           RETURNING Id;
            """;
 
     public static string UpsertMediaConsumptionHistoryEntry()
         => """
            INSERT INTO MediaConsumptionHistory (MediaId, ConsumedAt)
            VALUES ($mediaId, $consumedAt)
-           ON CONFLICT(MediaId, ConsumedAt) DO NOTHING;
+           ON CONFLICT(MediaId, ConsumedAt) DO UPDATE
+           SET ConsumedAt = excluded.ConsumedAt
+           RETURNING Id;
            """;
 
     public static string GetMediaSummaryEntries()
@@ -234,7 +253,7 @@ public static class Queries
 
     public static string GetMediaReviewPros()
         => """
-           SELECT Description
+           SELECT MediaReviewPros.Id, MediaReviewPros.Description
            FROM MediaReviews
            INNER JOIN MediaReviewPros
                ON MediaReviews.Id = MediaReviewPros.MediaReviewId
@@ -243,7 +262,7 @@ public static class Queries
     
     public static string GetMediaReviewCons()
         => """
-           SELECT Description
+           SELECT MediaReviewCons.Id, MediaReviewCons.Description
            FROM MediaReviews
            INNER JOIN MediaReviewCons
                ON MediaReviews.Id = MediaReviewCons.MediaReviewId
@@ -252,7 +271,7 @@ public static class Queries
 
     public static string GetMediaConsumptionHistory()
         => """
-           SELECT ConsumedAt
+           SELECT Id, ConsumedAt
            FROM MediaConsumptionHistory
            WHERE MediaConsumptionHistory.MediaId = $id
            ORDER BY  ConsumedAt;
@@ -262,5 +281,29 @@ public static class Queries
         => """
            DELETE FROM Media
            WHERE Id = $id;
+           """;
+    
+    public static string DeleteMediaReviewProsEntry()
+        => """
+           DELETE FROM MediaReviewPros
+           WHERE Id = $id;
+           """;
+
+    public static string DeleteMediaReviewConsEntry()
+        => """
+           DELETE FROM MediaReviewCons
+           WHERE Id = $id;
+           """;
+
+    public static string DeleteConsumptionHistoryEntry()
+        => """
+           DELETE FROM MediaConsumptionHistory
+           WHERE Id = $id;
+           """;
+
+    public static string DeleteMediaGenresEntry()
+        => """
+           DELETE FROM MediaGenres
+           WHERE MediaId = $mediaId AND GenreId = $genreId;
            """;
 }
