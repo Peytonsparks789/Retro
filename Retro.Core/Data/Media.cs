@@ -1,58 +1,56 @@
-using System.Text.Json.Serialization;
 using Retro.Core.Enums;
 
 namespace Retro.Core.Data;
 
 public class Media
 {
-    [JsonPropertyName("id")]
-    public required string Id { get; set; }
-    
-    [JsonPropertyName("title")]
+    public long? Id { get; set; }
     public required string Title { get; set; }
     
-    [JsonPropertyName("medium")]
     public required MediumType Medium { get; set; }
 
-    [JsonPropertyName("subMedium")]
     public string? SubMedium { get; set; }
 
-    [JsonPropertyName("genres")]
-    public List<string> Genres { get; set; } = [];
+    public List<Genre> Genres { get; set; } = [];
     
-    [JsonPropertyName("description")]
     public string? Description { get; set; }
     
-    [JsonPropertyName("review")]
     public required Review Review { get; set; }
-    
-    [JsonPropertyName("consumption")]
-    public required Consumption Consumption { get; set; }
+
+    public required List<Consumption> ConsumptionHistory { get; set; } = [];
 }
 
-public abstract class Review
+public class Review
 {
-    [JsonPropertyName("stars")]
     public required double Stars { get; set; }
     
-    [JsonPropertyName("thoughts")]
     public string? Thoughts { get; set; }
 
-    [JsonPropertyName("pros")]
-    public List<string> Pros { get; set; } = [];
+    public List<ReviewPro> Pros { get; set; } = [];
     
-    [JsonPropertyName("cons")]
-    public List<string> Cons { get; set; } = [];
+    public List<ReviewCon> Cons { get; set; } = [];
 }
 
-public abstract class Consumption
+public class Genre
 {
-    [JsonPropertyName("firsConsumedDate")]
-    public DateTime? FirstConsumedDate { get; set; }
-    
-    [JsonPropertyName("lastConsumedDate")]
-    public DateTime? LastConsumedDate { get; set; }
-    
-    [JsonPropertyName("total")]
-    public int TimesConsumed { get; set; }
+    public long? Id { get; set; }
+    public required string Name { get; set; }
+}
+
+public class ReviewPro
+{
+    public long? Id { get; set; }
+    public required string Description { get; set; }
+}
+
+public class ReviewCon
+{
+    public long? Id { get; set; }
+    public required string Description { get; set; }
+}
+
+public class Consumption
+{
+    public long? Id { get; set; }
+    public required DateTime ConsumedAt { get; set; }
 }
