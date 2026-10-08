@@ -7,7 +7,9 @@ public static class MediaRepositoryExtensions
     public static IServiceCollection AddMediaRepository(
         this IServiceCollection services)
     {
-        services.AddSingleton<IMediaRepository, MediaRepository>();
+        services
+            .AddSingleton<IMediaRepository, MediaRepository>()
+            .AddSingleton<DatabaseInitializer>();
         
         return services;
     }
