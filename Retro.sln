@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Retro.Core", "Retro.Core\Re
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Retro.Infrastructure", "Retro.Infrastructure\Retro.Infrastructure.csproj", "{B0F2A3F5-9473-4CFA-A9CE-663ED917C435}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Retro.Tui", "Retro.Tui\Retro.Tui.csproj", "{CB697538-FC84-4157-B9F7-468A81DC787A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
