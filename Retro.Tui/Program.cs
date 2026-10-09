@@ -8,7 +8,8 @@ var services = new ServiceCollection()
     .AddMediaRepository()
     
     // TUI Components
-    .AddTransient<MainMenu>();
+    .AddTransient<MainMenu>()
+    .AddTransient<AddMedia>();
 
 var provider = services.BuildServiceProvider();
 

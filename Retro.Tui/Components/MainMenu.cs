@@ -4,9 +4,13 @@ using Retro.Tui.Data.Enums;
 
 namespace Retro.Tui.Components;
 
-public class MainMenu
+public class MainMenu(
+    AddMedia media
+    AddMedia addMedia
+    )
 {
     private readonly List<MenuOption> _options = [
+        new(MainMenuOption.Add, "Add Media"),
         new(MainMenuOption.Exit, "Exit")
     ];
     public async Task RunAsync()
@@ -25,6 +29,9 @@ public class MainMenu
 
             switch (selection.Operation)
             {
+                case MainMenuOption.Add:
+                    await addMedia.AddMediaEntryAsync();
+                    break;
                 case MainMenuOption.Exit:
                     return;
                 default:
