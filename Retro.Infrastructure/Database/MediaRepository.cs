@@ -51,7 +51,10 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
                 media.Id = mediaId;
             }
 
-            var dbMediaGenresPreUpsert = await GetMediaGenresAsync(connection, media.Id.ToString()!);
+            var dbMediaGenresPreUpsert = await GetMediaGenresAsync(
+                connection,
+                media.Id.ToString()!,
+                transaction);
             foreach (var genre in media.Genres)
             {
                 // Upsert Genres table
@@ -111,7 +114,10 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
             }
             
             // Upsert MediaReviewPros table
-            var dbMediaProsPreUpsert = await GetMediaReviewProsAsync(connection, media.Id.ToString()!);
+            var dbMediaProsPreUpsert = await GetMediaReviewProsAsync(
+                connection,
+                media.Id.ToString()!,
+                transaction);
             foreach (var pro in media.Review.Pros)
             {
                 await using var command = connection.CreateCommand();
@@ -144,7 +150,10 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
             }
             
             // Upsert MediaReviewCons table
-            var dbMediaConsPreUpsert = await GetMediaReviewConsAsync(connection, media.Id.ToString()!);
+            var dbMediaConsPreUpsert = await GetMediaReviewConsAsync(
+                connection,
+                media.Id.ToString()!,
+                transaction);
             foreach (var con in media.Review.Cons)
             {
                 await using var command = connection.CreateCommand();
@@ -177,7 +186,10 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
             }
             
             // Upsert MediaConsumptionHistory table
-            var dbConsumptionHistoryPreUpsert = await GetMediaConsumptionHistoryAsync(connection, media.Id.ToString()!);
+            var dbConsumptionHistoryPreUpsert = await GetMediaConsumptionHistoryAsync(
+                connection,
+                media.Id.ToString()!,
+                transaction);
             foreach (var consumption in media.ConsumptionHistory)
             {
                 await using var command = connection.CreateCommand();
@@ -303,10 +315,14 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
         await connection.OpenAsync();
         return await GetMediaGenresAsync(connection, id);
     }
-    private static async Task<List<Genre>> GetMediaGenresAsync(SqliteConnection connection, string id)
+    private static async Task<List<Genre>> GetMediaGenresAsync(
+        SqliteConnection connection,
+        string id,
+        SqliteTransaction? transaction = null)
     {
         List<Genre> genres = [];
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = Queries.GetMediaGenres();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
@@ -330,13 +346,15 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
     }
     private async Task<Review?> GetMediaReviewAsync(
         SqliteConnection connection,
-        string id)
+        string id,
+        SqliteTransaction? transaction = null)
     {
         double stars;
         string? thoughts;
 
         await using (var command = connection.CreateCommand())
         {
+            command.Transaction = transaction;
             command.CommandText = Queries.GetMediaReview();
             command.Parameters.AddWithValue("id", id);
 
@@ -359,15 +377,19 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
         {
             Stars = stars,
             Thoughts = thoughts,
-            Pros = await GetMediaReviewProsAsync(connection, id),
-            Cons = await GetMediaReviewConsAsync(connection, id)
+            Pros = await GetMediaReviewProsAsync(connection, id, transaction),
+            Cons = await GetMediaReviewConsAsync(connection, id, transaction)
         };
     }
 
-    private async Task<List<ReviewCon>> GetMediaReviewConsAsync(SqliteConnection connection, string id)
+    private async Task<List<ReviewCon>> GetMediaReviewConsAsync(
+        SqliteConnection connection,
+        string id,
+        SqliteTransaction? transaction = null)
     {
         List<ReviewCon> cons = [];
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = Queries.GetMediaReviewCons();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
@@ -384,10 +406,14 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
         return cons;
     }
 
-    private async Task<List<ReviewPro>> GetMediaReviewProsAsync(SqliteConnection connection, string id)
+    private async Task<List<ReviewPro>> GetMediaReviewProsAsync(
+        SqliteConnection connection,
+        string id,
+        SqliteTransaction? transaction = null)
     {
         List<ReviewPro> pros = [];
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = Queries.GetMediaReviewPros();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
@@ -410,10 +436,14 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
         await connection.OpenAsync();
         return await GetMediaConsumptionHistoryAsync(connection, id);
     }
-    private async Task<List<Consumption>> GetMediaConsumptionHistoryAsync(SqliteConnection connection, string id)
+    private async Task<List<Consumption>> GetMediaConsumptionHistoryAsync(
+        SqliteConnection connection,
+        string id,
+        SqliteTransaction? transaction = null)
     {
         List<Consumption> consumptionHistory = [];
         await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = Queries.GetMediaConsumptionHistory();
         command.Parameters.AddWithValue("id", id);
         await using var reader = await command.ExecuteReaderAsync();
