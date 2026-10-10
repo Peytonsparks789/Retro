@@ -5,12 +5,13 @@ using Retro.Tui.Data.Enums;
 namespace Retro.Tui.Components;
 
 public class MainMenu(
-    AddMedia media
-    AddMedia addMedia
+    AddMedia addMedia,
+    ListMedia listMedia
     )
 {
-    private readonly List<MenuOption> _options = [
+    private readonly List<MenuOption<MainMenuOption>> _options = [
         new(MainMenuOption.Add, "Add Media"),
+        new(MainMenuOption.List, "List Media"),
         new(MainMenuOption.Exit, "Exit")
     ];
     public async Task RunAsync()
@@ -22,7 +23,7 @@ public class MainMenu(
             RetroHeader.GenerateHeader();
             
             var selection = AnsiConsole.Prompt(
-                new SelectionPrompt<MenuOption>()
+                new SelectionPrompt<MenuOption<MainMenuOption>>()
                     .Title("Welcome to Retro, what would you like to do?")
                     .AddChoices(_options)
                     .UseConverter(option => option.Label));
@@ -31,6 +32,9 @@ public class MainMenu(
             {
                 case MainMenuOption.Add:
                     await addMedia.AddMediaEntryAsync();
+                    break;
+                case MainMenuOption.List:
+                    await listMedia.ListMediaEntriesAsync();
                     break;
                 case MainMenuOption.Exit:
                     return;

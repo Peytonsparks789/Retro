@@ -1,8 +1,6 @@
-using Retro.Tui.Data.Enums;
-
 namespace Retro.Tui.Data.Config;
 
-public record MenuOption(
-    MainMenuOption Operation,
+public record MenuOption<T>(
+    T Operation,
     string Label
     );
