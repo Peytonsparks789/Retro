@@ -63,13 +63,29 @@ public class ListMedia(IMediaRepository repository)
             
             AnsiConsole.Write(table);
             
-            var input = AnsiConsole.Prompt(
-                new SelectionPrompt<MenuOption<MediaListOption>>()
-                    .Title("What would you like to do?")
-                    .AddChoices(_options)
-                    .UseConverter(option => option.Label));
+            AnsiConsole.MarkupLine(
+                "[grey]←[/] [bold]Previous[/]    " +
+                "[grey]→[/] [bold]Next[/]    " +
+                "[grey]Enter[/] [bold]Select[/]    " +
+                "[grey]S[/] [bold]Search[/]    " +
+                "[grey]Esc[/] [bold]Back[/]"
+            );
+            var key = Console.ReadKey(intercept: true);
 
-            HandleUserSelection(input, data);
+            var input = key.Key switch
+            {
+                ConsoleKey.LeftArrow => _options.Single(x => x.Operation == MediaListOption.Previous),
+                ConsoleKey.RightArrow => _options.Single(x => x.Operation == MediaListOption.Next),
+                ConsoleKey.Enter => _options.Single(x => x.Operation == MediaListOption.Select),
+                ConsoleKey.S => _options.Single(x => x.Operation == MediaListOption.Search),
+                ConsoleKey.Escape => _options.Single(x => x.Operation == MediaListOption.Back),
+                _ => null
+            };
+
+            if (input is not null)
+            {
+                HandleUserSelection(input, data);
+            }
         }
     }
     
