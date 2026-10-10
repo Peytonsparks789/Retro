@@ -194,31 +194,36 @@ public static class Queries
            RETURNING Id;
            """;
 
-    public static string GetMediaSummaryEntries()
-        => """
-           SELECT Media.Id, Media.Title, Mediums.Name, MediaReviews.Stars
-           FROM Media
-           INNER JOIN Mediums
-               ON Media.MediumId = Mediums.Id
-           INNER JOIN MediaReviews
-               ON Media.Id = MediaReviews.MediaId
-           WHERE
-               (Media.Title LIKE $search
-               OR Media.Description LIKE $search
-               OR MediaReviews.Thoughts LIKE $search
-               OR EXISTS (
-                   SELECT 1
-                   FROM MediaGenres
-                   INNER JOIN Genres
-                       ON MediaGenres.GenreId = Genres.Id
-                   WHERE MediaGenres.MediaId = Media.Id
-                     AND Genres.Name LIKE $search
-               ))
-               AND Media.Id > $lastId
-           ORDER BY Media.Id
-           LIMIT $pageSize;
-           """;
-
+    public static string GetMediaSummaryEntries(bool sortAscending)
+    {
+        var sortOrder = sortAscending ? "ASC" : "DESC";
+        var comparator = sortAscending ? ">" : "<";
+        return $"""
+            SELECT Media.Id, Media.Title, Mediums.Name, MediaReviews.Stars
+            FROM Media
+            INNER JOIN Mediums
+                ON Media.MediumId = Mediums.Id
+            INNER JOIN MediaReviews
+                ON Media.Id = MediaReviews.MediaId
+            WHERE
+                ($search IS NULL
+                OR Media.Title LIKE $search
+                OR Media.Description LIKE $search
+                OR MediaReviews.Thoughts LIKE $search
+                OR EXISTS (
+                    SELECT 1
+                    FROM MediaGenres
+                    INNER JOIN Genres
+                        ON MediaGenres.GenreId = Genres.Id
+                    WHERE MediaGenres.MediaId = Media.Id
+                      AND Genres.Name LIKE $search
+                ))
+                AND Media.Id {comparator} $lastId
+            ORDER BY Media.Id {sortOrder}
+            LIMIT $pageSize;
+            """;
+    }
+    
     public static string GetMediaEntry()
         => """
            SELECT

@@ -223,17 +223,22 @@ public class MediaRepository(ISqliteConnectionFactory connectionFactory) : IMedi
     }
     
     public async Task<List<MediaSummary>> GetMediaSummaryAsync(
-        string search,
+        string? search,
         int pageSize,
-        int lastId)
+        long lastId,
+        bool sortAscending)
     {
         await using var connection = connectionFactory.CreateConnection();
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = Queries.GetMediaSummaryEntries();
-        command.Parameters.AddWithValue("search", $"%{search}%");
-        command.Parameters.AddWithValue("pageSize", pageSize);
-        command.Parameters.AddWithValue("lastId", lastId);
+        command.CommandText = Queries.GetMediaSummaryEntries(sortAscending: sortAscending);
+        command.Parameters.AddWithValue(
+            "$search",
+            string.IsNullOrWhiteSpace(search)
+                ? DBNull.Value
+                : $"%{search}%");
+        command.Parameters.AddWithValue("pageSize", pageSize + 1); 
+        command.Parameters.AddWithValue("lastId", lastId <= 0 ? 0 : lastId);
         await using var reader = await command.ExecuteReaderAsync();
         
         var results = new List<MediaSummary>();
