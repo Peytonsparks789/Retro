@@ -1,3 +1,4 @@
+using Retro.Core.Data;
 using Retro.Infrastructure.Database;
 using Retro.Tui.Data.Config;
 using Retro.Tui.Data.Enums;
@@ -75,17 +76,24 @@ public class ViewMedia(IMediaRepository repository)
 
         if (input is not null)
         {
-            await HandleUserSelection(input);
+            await HandleUserSelection(input, media);
         }
     }
     
-    private async Task HandleUserSelection(MenuOption<MediaViewOption> input)
+    private async Task HandleUserSelection(MenuOption<MediaViewOption> input, Media data)
     {
         switch (input.Operation)
         {
             case MediaViewOption.Edit:
                 break;
             case MediaViewOption.Delete:
+                AnsiConsole.MarkupLine($"[red]Are you sure you want to delete '{Markup.Escape(data.Title)}'? This action cannot be undone. Y/N[/]");
+                var response = Console.ReadKey(intercept: true);
+                if (response.Key == ConsoleKey.Y)
+                {
+                    await repository.DeleteMediaAsync(data.Id.ToString()!);
+                    _continueListing = false;
+                }
                 break;
             case MediaViewOption.Back:
                 _continueListing = false;
