@@ -10,7 +10,9 @@ var services = new ServiceCollection()
     // TUI Components
     .AddTransient<MainMenu>()
     .AddTransient<AddMedia>()
-    .AddTransient<ListMedia>();
+    .AddTransient<ListMedia>()
+    .AddTransient<ViewMedia>()
+    ;
 
 var provider = services.BuildServiceProvider();
 

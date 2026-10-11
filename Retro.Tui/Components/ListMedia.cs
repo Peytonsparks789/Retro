@@ -6,7 +6,9 @@ using Spectre.Console;
 
 namespace Retro.Tui.Components;
 
-public class ListMedia(IMediaRepository repository)
+public class ListMedia(
+    IMediaRepository repository,
+    ViewMedia viewMedia)
 {
     private readonly List<MenuOption<MediaListOption>> _options = [
         new(MediaListOption.Next, "Next page"),
@@ -30,72 +32,77 @@ public class ListMedia(IMediaRepository repository)
             ResetDefaults();
             while (_continueListing)
             {
-                AnsiConsole.Clear();
-
-                RetroHeader.GenerateHeader();
-                
-                var data = await GetMediaDataAsync();
-
-                if (_search is not null)
-                {
-                    AnsiConsole.MarkupLine($"[green]Search: [/]{Markup.Escape(_search)}");
-                }
-
-                if (data.Count > 0)
-                {
-                    var table = new Table();
-
-                    table.AddColumn("Id");
-                    table.AddColumn("Title");
-                    table.AddColumn("Medium");
-                    table.AddColumn("Rating");
-                
-                    DeterminePageAvailability(data);
-                    foreach (var row in ResolveMediaList(data))
-                    {
-                        table.AddRow(
-                            row.Id.ToString(), 
-                            Markup.Escape(row.Title), 
-                            Markup.Escape(row.MediumType.ToString()), 
-                            row.Stars.ToString("F1"));
-                    }
-                
-                    AnsiConsole.Write(table);
-                }
-                else
-                {
-                    AnsiConsole.MarkupLine("[red]No media entries found for the given search.[/]");
-                }
-                
-                AnsiConsole.MarkupLine(
-                    "[grey]←[/] [bold]Previous[/]    " +
-                    "[grey]→[/] [bold]Next[/]    " +
-                    "[grey]Enter[/] [bold]Select[/]    " +
-                    "[grey]S[/] [bold]Search[/]    " +
-                    "[grey]Esc[/] [bold]Back[/]"
-                );
-                var key = Console.ReadKey(intercept: true);
-
-                var input = key.Key switch
-                {
-                    ConsoleKey.LeftArrow => _options.Single(x => x.Operation == MediaListOption.Previous),
-                    ConsoleKey.RightArrow => _options.Single(x => x.Operation == MediaListOption.Next),
-                    ConsoleKey.Enter => _options.Single(x => x.Operation == MediaListOption.Select),
-                    ConsoleKey.S => _options.Single(x => x.Operation == MediaListOption.Search),
-                    ConsoleKey.Escape => _options.Single(x => x.Operation == MediaListOption.Back),
-                    _ => null
-                };
-
-                if (input is not null)
-                {
-                    HandleUserSelection(input, data);
-                }
+                await Run();
             }
         }
         catch (Exception e)
         {
             AnsiConsole.MarkupLine($"[red]An error occurred while listing media entries: {Markup.Escape(e.Message)}[/]");
             AnsiConsole.Prompt(new TextPrompt<string>("[red]Press any key to continue...[/]").AllowEmpty());
+        }
+    }
+    
+    private async Task Run()
+    {
+        AnsiConsole.Clear();
+
+        RetroHeader.GenerateHeader();
+                
+        var data = await GetMediaDataAsync();
+
+        if (_search is not null)
+        {
+            AnsiConsole.MarkupLine($"[green]Search: [/]{Markup.Escape(_search)}");
+        }
+
+        if (data.Count > 0)
+        {
+            var table = new Table();
+            
+            table.AddColumn("Id");
+            table.AddColumn("Title");
+            table.AddColumn("Medium");
+            table.AddColumn("Rating");
+            
+            DeterminePageAvailability(data);
+            foreach (var row in ResolveMediaList(data))
+            {
+                table.AddRow(
+                    row.Id.ToString(), 
+                    Markup.Escape(row.Title), 
+                    Markup.Escape(row.MediumType.ToString()), 
+                    row.Stars.ToString("F1"));
+            }
+            
+            AnsiConsole.Write(table);
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[red]No media entries found for the given search.[/]");
+        }
+                
+        AnsiConsole.MarkupLine(
+            "[grey]←[/] [bold]Previous[/]    " +
+            "[grey]→[/] [bold]Next[/]    " +
+            "[grey]Enter[/] [bold]Select[/]    " +
+            "[grey]S[/] [bold]Search[/]    " +
+            "[grey]Esc[/] [bold]Back[/]"
+            );
+        var key = Console.ReadKey(intercept: true);
+
+        var input = key.Key switch
+        {
+            ConsoleKey.LeftArrow => _options.Single(x => x.Operation == MediaListOption.Previous),
+                ConsoleKey.RightArrow => _options.Single(x => x.Operation == MediaListOption.Next),
+                ConsoleKey.Enter => _options.Single(x => x.Operation == MediaListOption.Select),
+                ConsoleKey.S => _options.Single(x => x.Operation == MediaListOption.Search),
+                ConsoleKey.Escape => _options.Single(x => x.Operation == MediaListOption.Back),
+                _ => null
+        };
+
+        if (input is not null)
+        {
+            await HandleUserSelection(input, data);
         }
     }
     
@@ -106,7 +113,7 @@ public class ListMedia(IMediaRepository repository)
             lastId: _cursor,
             sortAscending: _orderAscending);
     
-    private List<MediaSummary> ResolveMediaList(List<MediaSummary> data)
+    private static List<MediaSummary> ResolveMediaList(List<MediaSummary> data)
     {
         List<MediaSummary> items = [.. data.Take(10)];
         return [.. items.OrderBy(x => x.Id)];
@@ -130,7 +137,7 @@ public class ListMedia(IMediaRepository repository)
         return _orderAscending ? items.Last().Id : items.First().Id;
     }
     
-    private void HandleUserSelection(MenuOption<MediaListOption> input, List<MediaSummary> data)
+    private async Task HandleUserSelection(MenuOption<MediaListOption> input, List<MediaSummary> data)
     {
         switch (input.Operation)
         {
@@ -151,7 +158,16 @@ public class ListMedia(IMediaRepository repository)
                 }
                 break;
             case MediaListOption.Select:
-                // Select media by ID
+                var id = AnsiConsole.Prompt(
+                    new TextPrompt<long>("[green]Enter media ID to view details:[/]").Validate(id =>
+                    {
+                        if (id < 0)
+                        {
+                            return ValidationResult.Error("[red]Please enter a valid positive ID.[/]");
+                        }
+                        return ValidationResult.Success();
+                    }));
+                await viewMedia.ViewMediaEntryAsync(id);
                 break;
             case MediaListOption.Search:
                 _search = AnsiConsole.Prompt(
