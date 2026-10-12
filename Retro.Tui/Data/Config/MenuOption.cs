@@ -2,5 +2,7 @@ namespace Retro.Tui.Data.Config;
 
 public record MenuOption<T>(
     T Operation,
-    string Label
+    string Label,
+    ConsoleKey Key,
+    string KeyLabel
     );

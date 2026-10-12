@@ -7,15 +7,16 @@ using Spectre.Console;
 namespace Retro.Tui.Components;
 
 public class ListMedia(
+    MenuOptionsRenderer<MediaListOptions> options,
     IMediaRepository repository,
     ViewMedia viewMedia)
 {
-    private readonly List<MenuOption<MediaListOption>> _options = [
-        new(MediaListOption.Next, "Next page"),
-        new(MediaListOption.Previous, "Previous page"),
-        new(MediaListOption.Select, "Select media by ID"),
-        new(MediaListOption.Search, "Search"),
-        new(MediaListOption.Back, "Back")
+    private readonly List<MenuOption<MediaListOptions>> _options = [
+        new(MediaListOptions.Next, "Next page", ConsoleKey.RightArrow, "→"),
+        new(MediaListOptions.Previous, "Previous page", ConsoleKey.LeftArrow, "←"),
+        new(MediaListOptions.Select, "Select media by ID", ConsoleKey.Enter, "Enter"),
+        new(MediaListOptions.Search, "Search", ConsoleKey.S, "S"),
+        new(MediaListOptions.Back, "Back", ConsoleKey.Escape, "Esc")
     ];
 
     private bool _continueListing = true;
@@ -80,30 +81,9 @@ public class ListMedia(
         {
             AnsiConsole.MarkupLine("[red]No media entries found for the given search.[/]");
         }
-                
-        AnsiConsole.MarkupLine(
-            "[grey]←[/] [bold]Previous[/]    " +
-            "[grey]→[/] [bold]Next[/]    " +
-            "[grey]Enter[/] [bold]Select[/]    " +
-            "[grey]S[/] [bold]Search[/]    " +
-            "[grey]Esc[/] [bold]Back[/]"
-            );
-        var key = Console.ReadKey(intercept: true);
-
-        var input = key.Key switch
-        {
-            ConsoleKey.LeftArrow => _options.Single(x => x.Operation == MediaListOption.Previous),
-                ConsoleKey.RightArrow => _options.Single(x => x.Operation == MediaListOption.Next),
-                ConsoleKey.Enter => _options.Single(x => x.Operation == MediaListOption.Select),
-                ConsoleKey.S => _options.Single(x => x.Operation == MediaListOption.Search),
-                ConsoleKey.Escape => _options.Single(x => x.Operation == MediaListOption.Back),
-                _ => null
-        };
-
-        if (input is not null)
-        {
-            await HandleUserSelection(input, data);
-        }
+        
+        var input = options.RenderAsync(_options);
+        await HandleUserSelection(input, data);
     }
     
     private async Task<List<MediaSummary>> GetMediaDataAsync()
@@ -137,11 +117,11 @@ public class ListMedia(
         return _orderAscending ? items.Last().Id : items.First().Id;
     }
     
-    private async Task HandleUserSelection(MenuOption<MediaListOption> input, List<MediaSummary> data)
+    private async Task HandleUserSelection(MenuOption<MediaListOptions> input, List<MediaSummary> data)
     {
         switch (input.Operation)
         {
-            case MediaListOption.Next:
+            case MediaListOptions.Next:
                 if (_hasNextPage)
                 {
                     _hasPreviousPage = true;
@@ -149,7 +129,7 @@ public class ListMedia(
                     _cursor = ResolveFinalListId(data);
                 }
                 break;
-            case MediaListOption.Previous:
+            case MediaListOptions.Previous:
                 if (_hasPreviousPage)
                 {
                     _hasNextPage = true;
@@ -157,7 +137,7 @@ public class ListMedia(
                     _cursor = ResolveFinalListId(data);
                 }
                 break;
-            case MediaListOption.Select:
+            case MediaListOptions.Select:
                 var id = AnsiConsole.Prompt(
                     new TextPrompt<long>("[green]Enter media ID to view details:[/]").Validate(id =>
                     {
@@ -169,7 +149,7 @@ public class ListMedia(
                     }));
                 await viewMedia.ViewMediaEntryAsync(id);
                 break;
-            case MediaListOption.Search:
+            case MediaListOptions.Search:
                 _search = AnsiConsole.Prompt(
                     new TextPrompt<string>("[green]Search [grey](leave empty to clear)[/]: [/]").AllowEmpty());
                 if (string.IsNullOrWhiteSpace(_search))
@@ -181,7 +161,7 @@ public class ListMedia(
                 _hasNextPage = false;
                 _hasPreviousPage = false;
                 break;
-            case MediaListOption.Back:
+            case MediaListOptions.Back:
                 ResetDefaults();
                 _continueListing = false;
                 break;

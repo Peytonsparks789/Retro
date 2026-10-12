@@ -1,6 +1,6 @@
 namespace Retro.Tui.Data.Enums;
 
-public enum MediaViewOption
+public enum MediaViewOptions
 {
     Delete,
     Edit,

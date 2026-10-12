@@ -1,6 +1,6 @@
 namespace Retro.Tui.Data.Enums;
 
-enum MediaListOption
+public enum MediaListOptions
 {
     Next,
     Previous,

@@ -1,18 +1,19 @@
 using Retro.Tui.Data.Config;
-using Spectre.Console;
 using Retro.Tui.Data.Enums;
+using Spectre.Console;
 
 namespace Retro.Tui.Components;
 
 public class MainMenu(
+    MenuOptionsRenderer<MainMenuOptions> options,
     AddMedia addMedia,
     ListMedia listMedia
     )
 {
-    private readonly List<MenuOption<MainMenuOption>> _options = [
-        new(MainMenuOption.Add, "Add Media"),
-        new(MainMenuOption.List, "List Media"),
-        new(MainMenuOption.Exit, "Exit")
+    private readonly List<MenuOption<MainMenuOptions>> _options = [
+        new(MainMenuOptions.Add, "Add Media", ConsoleKey.A, "A"),
+        new(MainMenuOptions.List, "List Media", ConsoleKey.L, "L"),
+        new(MainMenuOptions.Exit, "Exit", ConsoleKey.Escape, "Esc")
     ];
     private bool _continueRunning = true;
     
@@ -38,21 +39,23 @@ public class MainMenu(
 
         RetroHeader.GenerateHeader();
             
-        var selection = AnsiConsole.Prompt(
-            new SelectionPrompt<MenuOption<MainMenuOption>>()
-                .Title("Welcome to Retro, what would you like to do?")
-                .AddChoices(_options)
-                .UseConverter(option => option.Label));
+        AnsiConsole.MarkupLine("[green]Welcome to Retro![/]");
 
+        var input = options.RenderAsync(_options);
+        await HandleUserSelection(input);
+    }
+    
+    private async Task HandleUserSelection(MenuOption<MainMenuOptions> selection)
+    {
         switch (selection.Operation)
         {
-            case MainMenuOption.Add:
+            case MainMenuOptions.Add:
                 await addMedia.AddMediaEntryAsync();
                 break;
-            case MainMenuOption.List:
+            case MainMenuOptions.List:
                 await listMedia.ListMediaEntriesAsync();
                 break;
-            case MainMenuOption.Exit:
+            case MainMenuOptions.Exit:
                 _continueRunning = false;
                 break;
             default:

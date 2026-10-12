@@ -1,6 +1,6 @@
 namespace Retro.Tui.Data.Enums;
 
-public enum MainMenuOption
+public enum MainMenuOptions
 {
     Add,
     List,

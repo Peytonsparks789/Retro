@@ -6,17 +6,20 @@ using Spectre.Console;
 
 namespace Retro.Tui.Components;
 
-public class ViewMedia(IMediaRepository repository)
+public class ViewMedia(
+    MenuOptionsRenderer<MediaViewOptions> options,
+    IMediaRepository repository)
 {
-    private readonly List<MenuOption<MediaViewOption>> _options = [
-        new(MediaViewOption.Edit, "Edit media"),
-        new(MediaViewOption.Delete, "Delete media"),
-        new(MediaViewOption.Back, "Back")
+    private readonly List<MenuOption<MediaViewOptions>> _options = [
+        new(MediaViewOptions.Edit, "Edit media", ConsoleKey.E, "E"),
+        new(MediaViewOptions.Delete, "Delete media", ConsoleKey.D, "D"),
+        new(MediaViewOptions.Back, "Back", ConsoleKey.Escape, "Esc")
     ];
     private bool _continueListing = true;
     
     public async Task ViewMediaEntryAsync(long mediaId)
     {
+        ResetDefaults();
         try
         {
             while (_continueListing)
@@ -38,9 +41,9 @@ public class ViewMedia(IMediaRepository repository)
 
         RetroHeader.GenerateHeader();
 
-        var media = await repository.GetMediaAsync(mediaId.ToString());
+        var data = await repository.GetMediaAsync(mediaId.ToString());
 
-        if (media is null)
+        if (data is null)
         {
             AnsiConsole.MarkupLine($"[red]No media found with ID {mediaId}[/]");
             AnsiConsole.WriteLine("Press any key to return to the list...");
@@ -52,41 +55,24 @@ public class ViewMedia(IMediaRepository repository)
         table.AddColumn("Property");
         table.AddColumn("Value");
 
-        table.AddRow("Id", media.Id.ToString()!);
-        table.AddRow("Title", Markup.Escape(media.Title));
-        table.AddRow("Medium", Markup.Escape(media.Medium.ToString()));
-        table.AddRow("Rating", media.Review.Stars.ToString("F1"));
+        table.AddRow("Id", data.Id.ToString()!);
+        table.AddRow("Title", Markup.Escape(data.Title));
+        table.AddRow("Medium", Markup.Escape(data.Medium.ToString()));
+        table.AddRow("Rating", data.Review.Stars.ToString("F1"));
 
         AnsiConsole.Write(table);
-        
-        AnsiConsole.MarkupLine(
-            "[grey]E[/] [bold]Edit[/]    " +
-            "[grey]D[/] [bold]Delete[/]    " +
-            "[grey]Esc[/] [bold]Back[/]"
-        );
-        var key = Console.ReadKey(intercept: true);
 
-        var input = key.Key switch
-        {
-            ConsoleKey.E => _options.Single(x => x.Operation == MediaViewOption.Edit),
-            ConsoleKey.D => _options.Single(x => x.Operation == MediaViewOption.Delete),
-            ConsoleKey.Escape => _options.Single(x => x.Operation == MediaViewOption.Back),
-            _ => null
-        };
-
-        if (input is not null)
-        {
-            await HandleUserSelection(input, media);
-        }
+        var input = options.RenderAsync(_options); 
+        await HandleUserSelection(input, data);
     }
     
-    private async Task HandleUserSelection(MenuOption<MediaViewOption> input, Media data)
+    private async Task HandleUserSelection(MenuOption<MediaViewOptions> input, Media data)
     {
         switch (input.Operation)
         {
-            case MediaViewOption.Edit:
+            case MediaViewOptions.Edit:
                 break;
-            case MediaViewOption.Delete:
+            case MediaViewOptions.Delete:
                 AnsiConsole.MarkupLine($"[red]Are you sure you want to delete '{Markup.Escape(data.Title)}'? This action cannot be undone. Y/N[/]");
                 var response = Console.ReadKey(intercept: true);
                 if (response.Key == ConsoleKey.Y)
@@ -95,7 +81,7 @@ public class ViewMedia(IMediaRepository repository)
                     _continueListing = false;
                 }
                 break;
-            case MediaViewOption.Back:
+            case MediaViewOptions.Back:
                 _continueListing = false;
                 break;
             default:
@@ -103,4 +89,8 @@ public class ViewMedia(IMediaRepository repository)
         }
     }
 
+    private void ResetDefaults()
+    {
+        _continueListing = true;
+    }
 }

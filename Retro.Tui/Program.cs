@@ -2,6 +2,7 @@
 using Retro.Infrastructure.Database;
 using Retro.Infrastructure.Database.DependencyInjection;
 using Retro.Tui.Components;
+using Retro.Tui.Data.Enums;
 
 var services = new ServiceCollection()
     .AddSqliteDb()
@@ -12,6 +13,11 @@ var services = new ServiceCollection()
     .AddTransient<AddMedia>()
     .AddTransient<ListMedia>()
     .AddTransient<ViewMedia>()
+    
+    // TUI Menu Options
+    .AddSingleton<MenuOptionsRenderer<MainMenuOptions>>()
+    .AddSingleton<MenuOptionsRenderer<MediaListOptions>>()
+    .AddSingleton<MenuOptionsRenderer<MediaViewOptions>>()
     ;
 
 var provider = services.BuildServiceProvider();
