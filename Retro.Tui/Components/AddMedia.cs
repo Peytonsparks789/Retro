@@ -5,29 +5,44 @@ using Spectre.Console;
 
 namespace Retro.Tui.Components;
 
-public class AddMedia(IMediaRepository repository)
+public class AddMedia(IMediaRepository repository) : LayoutComponent
 {
-    public async Task AddMediaEntryAsync()
+    public override async Task RunAsync()
     {
-        var media = new Media()
+        try
         {
-            Medium = GetMediumType(),
-            Title = GetTitle(),
-            SubMedium = GetSubMedium(),
-            Genres = GetGenres(),
-            Description = GetDescription(),
-            Review = GetReview(),
-            ConsumptionHistory = GetConsumptionHistory()
-        };
+            ResetDefaults();
+            while (ContinueRunning)
+            {
+                var media = new Media()
+                {
+                    Medium = GetMediumType(),
+                    Title = GetTitle(),
+                    SubMedium = GetSubMedium(),
+                    Genres = GetGenres(),
+                    Description = GetDescription(),
+                    Review = GetReview(),
+                    ConsumptionHistory = GetConsumptionHistory()
+                };
 
-        var confirmation = AnsiConsole.Prompt(
-            new SelectionPrompt<string>()
-                .Title("Add media entry?")
-                .AddChoices("Yes", "No"));
+                var confirmation = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Add media entry?")
+                        .AddChoices("Yes", "No"));
 
-        if (confirmation.Equals("Yes", StringComparison.OrdinalIgnoreCase))
+                if (confirmation.Equals("Yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    await repository.UpsertMediaAsync(media);
+                }
+
+                ContinueRunning = false;
+            }
+        }
+        catch (Exception ex)
         {
-            await repository.UpsertMediaAsync(media);
+            AnsiConsole.MarkupLine($"[red]An error has occurred: {Markup.Escape(ex.Message)}[/]");
+            AnsiConsole.WriteLine("Press any key to return to the list...");
+            Console.ReadKey();
         }
     }
     

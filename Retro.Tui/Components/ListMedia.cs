@@ -7,33 +7,70 @@ using Spectre.Console;
 namespace Retro.Tui.Components;
 
 public class ListMedia(
-    MenuOptionsRenderer<MediaListOptions> options,
+    KeybindMenuRenderer<MediaListOptionsEnum> options,
     IMediaRepository repository,
-    ViewMedia viewMedia)
+    LayoutComponent<ViewMediaOptions> viewMedia) : LayoutComponent
 {
-    private readonly List<MenuOption<MediaListOptions>> _options = [
-        new(MediaListOptions.Next, "Next page", ConsoleKey.RightArrow, "→"),
-        new(MediaListOptions.Previous, "Previous page", ConsoleKey.LeftArrow, "←"),
-        new(MediaListOptions.Select, "Select media by ID", ConsoleKey.Enter, "Enter"),
-        new(MediaListOptions.Search, "Search", ConsoleKey.S, "S"),
-        new(MediaListOptions.Back, "Back", ConsoleKey.Escape, "Esc")
+    private readonly List<MenuOption<MediaListOptionsEnum>> _options = [
+        new(MediaListOptionsEnum.Next, "Next page", ConsoleKey.RightArrow, "→"),
+        new(MediaListOptionsEnum.Previous, "Previous page", ConsoleKey.LeftArrow, "←"),
+        new(MediaListOptionsEnum.Select, "Select media by ID", ConsoleKey.Enter, "Enter"),
+        new(MediaListOptionsEnum.Search, "Search", ConsoleKey.S, "S"),
+        new(MediaListOptionsEnum.Back, "Back", ConsoleKey.Escape, "Esc")
     ];
 
-    private bool _continueListing = true;
     private long _cursor;
     private bool _orderAscending = true;
     private bool _hasPreviousPage;
     private bool _hasNextPage;
     private string? _search;
     
-    public async Task ListMediaEntriesAsync()
+    public override async Task RunAsync()
     {
         try
         {
             ResetDefaults();
-            while (_continueListing)
+            while (ContinueRunning)
             {
-                await Run();
+                AnsiConsole.Clear();
+
+                RetroHeader.GenerateHeader();
+                
+                var data = await GetMediaDataAsync();
+
+                if (_search is not null)
+                {
+                    AnsiConsole.MarkupLine($"[green]Search: [/]{Markup.Escape(_search)}");
+                }
+
+                if (data.Count > 0)
+                {
+                    var table = new Table();
+            
+                    table.AddColumn("Id");
+                    table.AddColumn("Title");
+                    table.AddColumn("Medium");
+                    table.AddColumn("Rating");
+            
+                    DeterminePageAvailability(data);
+                    foreach (var row in ResolveMediaList(data))
+                    {
+                        table.AddRow(
+                            row.Id.ToString(), 
+                            Markup.Escape(row.Title), 
+                            Markup.Escape(row.MediumType.ToString()), 
+                            row.Stars.ToString("F1"));
+                    }
+            
+                    AnsiConsole.Write(table);
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[red]No media entries found for the given search.[/]");
+                }
+        
+                var input = await options.RunAsync(_options);
+                await HandleUserSelection(input, data);
             }
         }
         catch (Exception e)
@@ -41,49 +78,6 @@ public class ListMedia(
             AnsiConsole.MarkupLine($"[red]An error occurred while listing media entries: {Markup.Escape(e.Message)}[/]");
             AnsiConsole.Prompt(new TextPrompt<string>("[red]Press any key to continue...[/]").AllowEmpty());
         }
-    }
-    
-    private async Task Run()
-    {
-        AnsiConsole.Clear();
-
-        RetroHeader.GenerateHeader();
-                
-        var data = await GetMediaDataAsync();
-
-        if (_search is not null)
-        {
-            AnsiConsole.MarkupLine($"[green]Search: [/]{Markup.Escape(_search)}");
-        }
-
-        if (data.Count > 0)
-        {
-            var table = new Table();
-            
-            table.AddColumn("Id");
-            table.AddColumn("Title");
-            table.AddColumn("Medium");
-            table.AddColumn("Rating");
-            
-            DeterminePageAvailability(data);
-            foreach (var row in ResolveMediaList(data))
-            {
-                table.AddRow(
-                    row.Id.ToString(), 
-                    Markup.Escape(row.Title), 
-                    Markup.Escape(row.MediumType.ToString()), 
-                    row.Stars.ToString("F1"));
-            }
-            
-            AnsiConsole.Write(table);
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[red]No media entries found for the given search.[/]");
-        }
-        
-        var input = options.RenderAsync(_options);
-        await HandleUserSelection(input, data);
     }
     
     private async Task<List<MediaSummary>> GetMediaDataAsync()
@@ -117,11 +111,11 @@ public class ListMedia(
         return _orderAscending ? items.Last().Id : items.First().Id;
     }
     
-    private async Task HandleUserSelection(MenuOption<MediaListOptions> input, List<MediaSummary> data)
+    private async Task HandleUserSelection(MenuOption<MediaListOptionsEnum> input, List<MediaSummary> data)
     {
         switch (input.Operation)
         {
-            case MediaListOptions.Next:
+            case MediaListOptionsEnum.Next:
                 if (_hasNextPage)
                 {
                     _hasPreviousPage = true;
@@ -129,7 +123,7 @@ public class ListMedia(
                     _cursor = ResolveFinalListId(data);
                 }
                 break;
-            case MediaListOptions.Previous:
+            case MediaListOptionsEnum.Previous:
                 if (_hasPreviousPage)
                 {
                     _hasNextPage = true;
@@ -137,7 +131,7 @@ public class ListMedia(
                     _cursor = ResolveFinalListId(data);
                 }
                 break;
-            case MediaListOptions.Select:
+            case MediaListOptionsEnum.Select:
                 var id = AnsiConsole.Prompt(
                     new TextPrompt<long>("[green]Enter media ID to view details:[/]").Validate(id =>
                     {
@@ -147,9 +141,9 @@ public class ListMedia(
                         }
                         return ValidationResult.Success();
                     }));
-                await viewMedia.ViewMediaEntryAsync(id);
+                await viewMedia.RunAsync(new ViewMediaOptions { Id = id });
                 break;
-            case MediaListOptions.Search:
+            case MediaListOptionsEnum.Search:
                 _search = AnsiConsole.Prompt(
                     new TextPrompt<string>("[green]Search [grey](leave empty to clear)[/]: [/]").AllowEmpty());
                 if (string.IsNullOrWhiteSpace(_search))
@@ -161,18 +155,18 @@ public class ListMedia(
                 _hasNextPage = false;
                 _hasPreviousPage = false;
                 break;
-            case MediaListOptions.Back:
+            case MediaListOptionsEnum.Back:
                 ResetDefaults();
-                _continueListing = false;
+                ContinueRunning = false;
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
-    private void ResetDefaults()
+    protected override void ResetDefaults()
     {
-        _continueListing = true;
+        ContinueRunning = true;
         _cursor = 0;
         _orderAscending = true;
         _hasPreviousPage = false;

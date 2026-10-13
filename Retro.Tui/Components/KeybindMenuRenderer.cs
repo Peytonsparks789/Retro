@@ -3,11 +3,13 @@ using Spectre.Console;
 
 namespace Retro.Tui.Components;
 
-public class MenuOptionsRenderer<T>
+public class KeybindMenuRenderer<T> : LayoutComponent<List<MenuOption<T>>, MenuOption<T>>
 where T : Enum
 {
-    public MenuOption<T> RenderAsync(List<MenuOption<T>> options)
+    public override Task<MenuOption<T>> RunAsync(List<MenuOption<T>> options)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        
         MenuOption<T>? input = null;
         foreach (var option in options)
         { 
@@ -21,9 +23,9 @@ where T : Enum
         while (input == null)
         {
             var key = Console.ReadKey(intercept: true);
-            input = options.SingleOrDefault(x => x.Key == key.Key) ?? null;
+            input = options.FirstOrDefault(x => x.Key == key.Key) ?? null;
         }
 
-        return input;
+        return Task.FromResult(input);
     }
 }

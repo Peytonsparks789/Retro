@@ -15,9 +15,9 @@ var services = new ServiceCollection()
     .AddTransient<ViewMedia>()
     
     // TUI Menu Options
-    .AddSingleton<MenuOptionsRenderer<MainMenuOptions>>()
-    .AddSingleton<MenuOptionsRenderer<MediaListOptions>>()
-    .AddSingleton<MenuOptionsRenderer<MediaViewOptions>>()
+    .AddSingleton<KeybindMenuRenderer<MainMenuOptionsEnum>>()
+    .AddSingleton<KeybindMenuRenderer<MediaListOptionsEnum>>()
+    .AddSingleton<KeybindMenuRenderer<MediaViewOptionsEnum>>()
     ;
 
 var provider = services.BuildServiceProvider();

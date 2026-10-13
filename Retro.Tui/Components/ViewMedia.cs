@@ -7,24 +7,49 @@ using Spectre.Console;
 namespace Retro.Tui.Components;
 
 public class ViewMedia(
-    MenuOptionsRenderer<MediaViewOptions> options,
-    IMediaRepository repository)
+    KeybindMenuRenderer<MediaViewOptionsEnum> options,
+    IMediaRepository repository) : LayoutComponent<ViewMediaOptions>
 {
-    private readonly List<MenuOption<MediaViewOptions>> _options = [
-        new(MediaViewOptions.Edit, "Edit media", ConsoleKey.E, "E"),
-        new(MediaViewOptions.Delete, "Delete media", ConsoleKey.D, "D"),
-        new(MediaViewOptions.Back, "Back", ConsoleKey.Escape, "Esc")
+    private readonly List<MenuOption<MediaViewOptionsEnum>> _options = [
+        new(MediaViewOptionsEnum.Edit, "Edit media", ConsoleKey.E, "E"),
+        new(MediaViewOptionsEnum.Delete, "Delete media", ConsoleKey.D, "D"),
+        new(MediaViewOptionsEnum.Back, "Back", ConsoleKey.Escape, "Esc")
     ];
-    private bool _continueListing = true;
     
-    public async Task ViewMediaEntryAsync(long mediaId)
+    public override async Task RunAsync(ViewMediaOptions request)
     {
-        ResetDefaults();
         try
         {
-            while (_continueListing)
+            ResetDefaults();
+            while (ContinueRunning)
             {
-                await Run(mediaId);
+                AnsiConsole.Clear();
+
+                RetroHeader.GenerateHeader();
+
+                var data = await repository.GetMediaAsync(request.Id.ToString());
+
+                if (data is null)
+                {
+                    AnsiConsole.MarkupLine($"[red]No media found with ID {request.Id}[/]");
+                    AnsiConsole.WriteLine("Press any key to return to the list...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                var table = new Table();
+                table.AddColumn("Property");
+                table.AddColumn("Value");
+
+                table.AddRow("Id", data.Id.ToString()!);
+                table.AddRow("Title", Markup.Escape(data.Title));
+                table.AddRow("Medium", Markup.Escape(data.Medium.ToString()));
+                table.AddRow("Rating", data.Review.Stars.ToString("F1"));
+
+                AnsiConsole.Write(table);
+
+                var input = await options.RunAsync(_options); 
+                await HandleUserSelection(input, data);
             }
         }
         catch (Exception ex)
@@ -34,63 +59,27 @@ public class ViewMedia(
             Console.ReadKey();
         }
     }
-
-    private async Task Run(long mediaId)
-    {
-        AnsiConsole.Clear();
-
-        RetroHeader.GenerateHeader();
-
-        var data = await repository.GetMediaAsync(mediaId.ToString());
-
-        if (data is null)
-        {
-            AnsiConsole.MarkupLine($"[red]No media found with ID {mediaId}[/]");
-            AnsiConsole.WriteLine("Press any key to return to the list...");
-            Console.ReadKey();
-            return;
-        }
-
-        var table = new Table();
-        table.AddColumn("Property");
-        table.AddColumn("Value");
-
-        table.AddRow("Id", data.Id.ToString()!);
-        table.AddRow("Title", Markup.Escape(data.Title));
-        table.AddRow("Medium", Markup.Escape(data.Medium.ToString()));
-        table.AddRow("Rating", data.Review.Stars.ToString("F1"));
-
-        AnsiConsole.Write(table);
-
-        var input = options.RenderAsync(_options); 
-        await HandleUserSelection(input, data);
-    }
     
-    private async Task HandleUserSelection(MenuOption<MediaViewOptions> input, Media data)
+    private async Task HandleUserSelection(MenuOption<MediaViewOptionsEnum> input, Media data)
     {
         switch (input.Operation)
         {
-            case MediaViewOptions.Edit:
+            case MediaViewOptionsEnum.Edit:
                 break;
-            case MediaViewOptions.Delete:
+            case MediaViewOptionsEnum.Delete:
                 AnsiConsole.MarkupLine($"[red]Are you sure you want to delete '{Markup.Escape(data.Title)}'? This action cannot be undone. Y/N[/]");
                 var response = Console.ReadKey(intercept: true);
                 if (response.Key == ConsoleKey.Y)
                 {
                     await repository.DeleteMediaAsync(data.Id.ToString()!);
-                    _continueListing = false;
+                    ContinueRunning = false;
                 }
                 break;
-            case MediaViewOptions.Back:
-                _continueListing = false;
+            case MediaViewOptionsEnum.Back:
+                ContinueRunning = false;
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
-    }
-
-    private void ResetDefaults()
-    {
-        _continueListing = true;
     }
 }
