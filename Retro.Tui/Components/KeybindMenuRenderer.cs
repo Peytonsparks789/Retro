@@ -10,22 +10,55 @@ where T : Enum
     {
         ArgumentNullException.ThrowIfNull(options);
         
-        MenuOption<T>? input = null;
+        if (options.Count == 0)
+            throw new ArgumentException(
+                "Options cannot be null or empty.",
+                nameof(options));
+
+        if (options.Any(x => x.Key is null || x.KeyLabel is null))
+            throw new ArgumentException(
+                "Every option must have a key and key label.",
+                nameof(options));
+        
         foreach (var option in options)
         { 
             AnsiConsole.Markup(
-                $"[grey]{Markup.Escape(option.KeyLabel)}[/] " +
+                $"[grey]{Markup.Escape(option.KeyLabel!)}[/] " +
                 $"[bold]{Markup.Escape(option.Label)}[/]  "
                 );
         }
         AnsiConsole.MarkupLine("");
 
-        while (input == null)
+        while (true)
         {
             var key = Console.ReadKey(intercept: true);
-            input = options.FirstOrDefault(x => x.Key == key.Key) ?? null;
-        }
+            var selection = options.FirstOrDefault(x => x.Key == key.Key);
 
-        return Task.FromResult(input);
+            if (selection is not null)
+                return Task.FromResult(selection);
+        }
+    }
+}
+
+public class SelectMenuRenderer<T> : LayoutComponent<List<MenuOption<T>>, MenuOption<T>>
+where T : Enum
+{
+    public override Task<MenuOption<T>> RunAsync(List<MenuOption<T>> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        
+        if (options.Count == 0)
+            throw new ArgumentException(
+                "Options cannot be null or empty.",
+                nameof(options));
+        
+        var selection = AnsiConsole.Prompt(
+            new SelectionPrompt<MenuOption<T>>()
+                .Title("Select an option:")
+                .AddChoices(options)
+                .UseConverter(option => option.Label)
+        );
+
+        return Task.FromResult(selection);
     }
 }
